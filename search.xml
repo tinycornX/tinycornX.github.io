@@ -4,12 +4,6 @@
   
     
     <entry>
-      <title><![CDATA[Sticky Tips 003]]></title>
-      <url>http://tinycornX.github.io/2016/08/23/sticky-tips-003/</url>
-      <content type="html"></content>
-    </entry>
-    
-    <entry>
       <title><![CDATA[Sticky Tips 002]]></title>
       <url>http://tinycornX.github.io/2016/07/22/sticky-tips-002/</url>
       <content type="html"><![CDATA[<p>PHP PDO连接MySQL添加关闭连接，以节约服务器资源，防止因为超时而导致的服务器主动关闭链接带来的问题。</p>
