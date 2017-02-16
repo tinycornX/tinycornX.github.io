@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+
+    <!--[if lt IE 9]>
+        <style>body {display: none; background: none !important} </style>
+        <meta http-equiv="Refresh" Content="0; url=//outdatedbrowser.com/" />
+    <![endif]-->
+
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="format-detection" content="telephone=no" />
+<meta name="author" content="TinyCorn X" />
+
+
+
+<meta name="description" content="最近做服务器的调试测试，发现隔三差五的就会莫名其妙的登录失败。查了下apache的log，发现经常出现一个“MySQL Server has gone away”的error，让我非常之蛋疼。而且貌似并发访问的时候，也会经常出现这个错误。于是就在网上搜了一下可能导致这个错误的原因，以及有可能的解决方案。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL has gone away问题">
+<meta property="og:url" content="http://tinycornX.github.io/2016/07/22/MySQL-has-gone-away/index.html">
+<meta property="og:site_name" content="TinyCornの个人博客">
+<meta property="og:description" content="最近做服务器的调试测试，发现隔三差五的就会莫名其妙的登录失败。查了下apache的log，发现经常出现一个“MySQL Server has gone away”的error，让我非常之蛋疼。而且貌似并发访问的时候，也会经常出现这个错误。于是就在网上搜了一下可能导致这个错误的原因，以及有可能的解决方案。">
+<meta property="og:updated_time" content="2016-07-22T10:13:34.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="MySQL has gone away问题">
+<meta name="twitter:description" content="最近做服务器的调试测试，发现隔三差五的就会莫名其妙的登录失败。查了下apache的log，发现经常出现一个“MySQL Server has gone away”的error，让我非常之蛋疼。而且貌似并发访问的时候，也会经常出现这个错误。于是就在网上搜了一下可能导致这个错误的原因，以及有可能的解决方案。">
+
+<link rel="apple-touch-icon" href= "/apple-touch-icon.png">
+
+
+    <link rel="alternate" href="/atom.xml" title="TinyCornの个人博客" type="application/atom+xml">
+
+
+
+    <link rel="shortcut icon" href="/favicon.png">
+
+
+
+    <link href="//cdn.bootcss.com/animate.css/3.5.1/animate.min.css" rel="stylesheet">
+
+
+
+    <link href="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.min.css" rel="stylesheet">
+
+
+
+    <script src="//cdn.bootcss.com/pace/1.0.2/pace.min.js"></script>
+    <link href="//cdn.bootcss.com/pace/1.0.2/themes/blue/pace-theme-minimal.css" rel="stylesheet">
+
+
+<link rel="stylesheet" href="/css/style.css">
+
+
+
+<link href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet">
+
+
+<title>MySQL has gone away问题 | TinyCornの个人博客</title>
+
+<script src="//cdn.bootcss.com/jquery/2.2.4/jquery.min.js"></script>
+<script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+<script>
+    var yiliaConfig = {
+        fancybox: true,
+        animate: true,
+        isHome: false,
+        isPost: true,
+        isArchive: false,
+        isTag: false,
+        isCategory: false,
+        fancybox_js: "//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.min.js",
+        scrollreveal: "//cdn.bootcss.com/scrollReveal.js/3.1.4/scrollreveal.min.js",
+        search: true
+    }
+</script>
+
+
+    <script>
+        yiliaConfig.jquery_ui = [true, "//cdn.bootcss.com/jqueryui/1.10.4/jquery-ui.min.js", "//cdn.bootcss.com/jqueryui/1.10.4/css/jquery-ui.min.css"];
+    </script>
+
+
+
+    <script> yiliaConfig.rootUrl = "\/";</script>
+
+
+
+
+
+    <script>
+        var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "//hm.baidu.com/hm.js?3a7048966174f71aed4bc9708352551a";
+            var s = document.getElementsByTagName("script")[0]; 
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+
+</head>
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+    <header id="header" class="inner">
+        <a href="/" class="profilepic">
+            <img src="/img/avatar.png" class="animated zoomIn">
+        </a>
+        <hgroup>
+          <h1 class="header-author"><a href="/">TinyCorn X</a></h1>
+        </hgroup>
+
+        
+
+        
+            <form id="search-form">
+            <input type="text" id="local-search-input" name="q" placeholder="search..." class="search form-control" autocomplete="off" autocorrect="off" searchonload="true" />
+            <i class="fa fa-times" onclick="resetSearch()"></i>
+            </form>
+            <div id="local-search-result"></div>
+            <p class='no-result'>No results found <i class='fa fa-spinner fa-pulse'></i></p>
+        
+
+
+        
+            <div id="switch-btn" class="switch-btn">
+                <div class="icon">
+                    <div class="icon-ctn">
+                        <div class="icon-wrap icon-house" data-idx="0">
+                            <div class="birdhouse"></div>
+                            <div class="birdhouse_holes"></div>
+                        </div>
+                        <div class="icon-wrap icon-ribbon hide" data-idx="1">
+                            <div class="ribbon"></div>
+                        </div>
+                        
+                        <div class="icon-wrap icon-link hide" data-idx="2">
+                            <div class="loopback_l"></div>
+                            <div class="loopback_r"></div>
+                        </div>
+                        
+                        
+                        <div class="icon-wrap icon-me hide" data-idx="3">
+                            <div class="user"></div>
+                            <div class="shoulder"></div>
+                        </div>
+                        
+                    </div>
+                    
+                </div>
+                <div class="tips-box hide">
+                    <div class="tips-arrow"></div>
+                    <ul class="tips-inner">
+                        <li>菜单</li>
+                        <li>标签</li>
+                        
+                        <li>友情链接</li>
+                        
+                        
+                        <li>关于我</li>
+                        
+                    </ul>
+                </div>
+            </div>
+        
+
+        <div id="switch-area" class="switch-area">
+            <div class="switch-wrap">
+                <section class="switch-part switch-part1">
+                    <nav class="header-menu">
+                        <ul>
+                        
+                            <li><a href="/">主页</a></li>
+                        
+                            <li><a href="/archives/">所有文章</a></li>
+                        
+                            <li><a href="/tags/">标签云</a></li>
+                        
+                            <li><a href="/about/">关于我</a></li>
+                        
+                        </ul>
+                    </nav>
+                    <nav class="header-nav">
+                        <ul class="social">
+                            
+                                <a class="fa Email" href="mailto:konoha.min@outlook.com" title="Email"></a>
+                            
+                                <a class="fa 新浪微博" href="http://weibo.com/tinycornX" title="新浪微博"></a>
+                            
+                                <a class="fa GitHub" href="https://github.com/tinycornX" title="GitHub"></a>
+                            
+                                <a class="fa 网易云音乐" href="http://music.163.com/user/49180448" title="网易云音乐"></a>
+                            
+                                <a class="fa bilibili" href="http://www.bilibili.tv" title="bilibili"></a>
+                            
+                                <a class="fa QQ" href="tencent://message/?uin=1169882897" title="QQ"></a>
+                            
+                                <a class="fa 微信" href="wechat://sofat_" title="微信"></a>
+                            
+                        </ul>
+                    </nav>
+                </section>
+                
+                
+                <section class="switch-part switch-part2">
+                    <div class="widget tagcloud" id="js-tagcloud">
+                        <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Apache/">Apache</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/CSS/">CSS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/FIDO/">FIDO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Markdown/">Markdown</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/PDO/">PDO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/PHP/">PHP</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Security/">Security</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/U2F/">U2F</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Web/">Web</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/XSS/">XSS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Yelee/">Yelee</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/优化/">优化</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/计划/">计划</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/运维/">运维</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/这是个标签/">这是个标签</a></li></ul>
+                    </div>
+                </section>
+                
+                
+                
+                <section class="switch-part switch-part3">
+                    <div id="js-friends">
+                    
+                      <a class="main-nav-link switch-friends-link" href="https://hexo.io">Hexo</a>
+                    
+                      <a class="main-nav-link switch-friends-link" href="https://pages.github.com/">GitHub</a>
+                    
+                      <a class="main-nav-link switch-friends-link" href="http://moxfive.xyz/">MOxFIVE</a>
+                    
+                    </div>
+                </section>
+                
+
+                
+                
+                <section class="switch-part switch-part4">
+                
+                    <div id="js-aboutme">安全行业小菜鸡一只</div>
+                </section>
+                
+            </div>
+        </div>
+    </header>                
+</div>
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+      <div class="overlay">
+          <div class="slider-trigger"></div>
+          <h1 class="header-author js-mobile-header hide"><a href="/" title="回到主页">TinyCorn X</a></h1>
+      </div>
+    <div class="intrude-less">
+        <header id="header" class="inner">
+            <a href="/" class="profilepic">
+                <img src="/img/avatar.png" class="animated zoomIn">
+            </a>
+            <hgroup>
+              <h1 class="header-author"><a href="/" title="回到主页">TinyCorn X</a></h1>
+            </hgroup>
+            
+            <nav class="header-menu">
+                <ul>
+                
+                    <li><a href="/">主页</a></li>
+                
+                    <li><a href="/archives/">所有文章</a></li>
+                
+                    <li><a href="/tags/">标签云</a></li>
+                
+                    <li><a href="/about/">关于我</a></li>
+                
+                <div class="clearfix"></div>
+                </ul>
+            </nav>
+            <nav class="header-nav">
+                        <ul class="social">
+                            
+                                <a class="fa Email" target="_blank" href="mailto:konoha.min@outlook.com" title="Email"></a>
+                            
+                                <a class="fa 新浪微博" target="_blank" href="http://weibo.com/tinycornX" title="新浪微博"></a>
+                            
+                                <a class="fa GitHub" target="_blank" href="https://github.com/tinycornX" title="GitHub"></a>
+                            
+                                <a class="fa 网易云音乐" target="_blank" href="http://music.163.com/user/49180448" title="网易云音乐"></a>
+                            
+                                <a class="fa bilibili" target="_blank" href="http://www.bilibili.tv" title="bilibili"></a>
+                            
+                                <a class="fa QQ" target="_blank" href="tencent://message/?uin=1169882897" title="QQ"></a>
+                            
+                                <a class="fa 微信" target="_blank" href="wechat://sofat_" title="微信"></a>
+                            
+                        </ul>
+            </nav>
+        </header>                
+    </div>
+    <link class="menu-list" tags="标签" friends="友情链接" about="关于我"/>
+</nav>
+      <div class="body-wrap"><article id="post-MySQL-has-gone-away" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2016/07/22/MySQL-has-gone-away/" class="article-date">
+      <time datetime="2016-07-22T09:46:46.000Z" itemprop="datePublished">2016-07-22</time>
+</a>
+
+
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      MySQL has gone away问题
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+    <div class="article-category tagcloud">
+    <a class="article-category-link" href="/categories/开发日志/">开发日志</a><a class="article-category-link" href="/categories/开发日志/自用笔记/">自用笔记</a>
+    </div>
+
+
+        
+    <div class="article-tag tagcloud">
+        <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MySQL/">MySQL</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/PHP/">PHP</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/优化/">优化</a></li></ul>
+    </div>
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+          
+        <p>　　最近做服务器的调试测试，发现隔三差五的就会莫名其妙的登录失败。查了下apache的log，发现经常出现一个“MySQL Server has gone away”的error，让我非常之蛋疼。而且貌似并发访问的时候，也会经常出现这个错误。于是就在网上搜了一下可能导致这个错误的原因，以及有可能的解决方案。 </p>
+<p>　　在mysql的运行过程中出现ERROR : (2006, ‘MySQL server has gone away’) 的问题意思就是指client和MySQL server之间的链接断开了。通常我之前的解决方案是手动重启MySQL，然而这样做太费时费力了，还得每次都重新登录下远程服务器。</p>
+<p>　　产生的原因有很多，以下大致列了以下网上列举出来的原因和查询MySQL部分参数的方法：</p>
+<h2 id="MySQL-Service挂了"><a href="#MySQL-Service挂了" class="headerlink" title="MySQL Service挂了"></a>MySQL Service挂了</h2><p>　　服务挂了，client必须就连接不上server了呗~这也是我直觉认为我这里服务器的问题。</p>
+<h3 id="判别方法"><a href="#判别方法" class="headerlink" title="判别方法"></a>判别方法</h3><p>　　判断是不是MySQL挂了的方法很简单，我简单总结了一下：</p>
+<ul>
+<li>查看后台进程列表，看看是不是有mysqld进程在运行</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ ps <span class="_">-e</span> | grep mysqld</div></pre></td></tr></table></figure>
+<ul>
+<li>查询下mysql的log，看看最近有没有重启记录(注：查看log可能需要root权限)  </li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ less /var/<span class="built_in">log</span>/mysql/error.log</div></pre></td></tr></table></figure>
+<ul>
+<li>在mysql里面查询下mysql的运行时间，如果uptime数值比较大，说明mysql服务距离上次重启已经很久了，最近没有重启操作。  </li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql&gt; show global status like <span class="string">'uptime'</span>;</div></pre></td></tr></table></figure>
+<h3 id="可能解决思路"><a href="#可能解决思路" class="headerlink" title="可能解决思路"></a>可能解决思路</h3><p>　　重启MySQL Server服务呗╮(╯∀╰)╭(注：需要<strong>root</strong>权限)</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ sudo service mysqld restart</div></pre></td></tr></table></figure>
+<p>　　服务都挂了，当然直接重启咯，重启大法好！然而引起重启的原因大概也只能够通过log的查询来进一步寻找了吧~</p>
+<h2 id="MySQL连接超时"><a href="#MySQL连接超时" class="headerlink" title="MySQL连接超时"></a>MySQL连接超时</h2><h3 id="可能原因"><a href="#可能原因" class="headerlink" title="可能原因"></a>可能原因</h3><p>　　这种情况大概是某个mysql长连接很久没有发起新的请求，于是原来的connection达到了server端设置的timeout，于是这个connection被server强行关闭了。在此之后，再通过之前的那个connection发起查询的时候，就会报错’MySQL server has gone away’了。据说大部分PHP脚本连接MySQL报错就是这个问题。</p>
+<p>　　我估计我这边服务器报错的原因也是这个，因为通过PDO连接MySQL的时候，始终没有执行close的操作。初始化原来的PDO对象进行连接之后，隔一段时间不操作，很容易就connection timeout而被server主动关闭链接了。关于PHP PDO关闭连接的简单方法可以参见我自己的<a href="https://tinycornx.github.io/2016/07/22/sticky-tips-002/">Sticky Tips</a>。</p>
+<h3 id="参数查询"><a href="#参数查询" class="headerlink" title="参数查询"></a>参数查询</h3><p>　　这里可以在mysql里面查询相关timeout的参数设置：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql&gt; show global variables like <span class="string">'%timeout'</span>;</div></pre></td></tr></table></figure>
+<p>　　理论上呢，这里应该是会显示一大堆设置过的timeout参数，例如connect_timeout、delayed_insert_timeout、innodb_lock_wait_timeout、innodb_rollback_on_timeout、<code>interactive_timeout</code>、lock_wait_timeout、net_read_timeout、net_write_timeout、slave_net_timeout、<code>wait_timeout</code>等等。当然，<em>如果没有在配置文件里面设置这些参数，他们是不会出现的</em>。</p>
+<h3 id="可能解决方法"><a href="#可能解决方法" class="headerlink" title="可能解决方法"></a>可能解决方法</h3><p><strong>方法一：修改MySQL参数</strong></p>
+<p>　　可以在<code>my.cnf</code>(windows是<code>my.ini</code>)中 修改或者增加<code>interactive_timeout</code>和<code>wait_timeout</code>的值。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"><span class="built_in">wait</span>_timeout=2880000 <span class="comment">#　默认时常应该是8*3600＝28800即8个小时，这里修改成了800小时</span></div><div class="line">interactive_timeout = 2880000 <span class="comment"># 同上</span></div></pre></td></tr></table></figure>
+<p>或者在连接数据库的时候设置<code>CLIENT_INTERACTIVE</code>，例如：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">sql = <span class="string">"set interactive_timeout=24*3600"</span>; </div><div class="line">mysql_real_query(...)</div></pre></td></tr></table></figure>
+<p>　　这里，两个参数的设置单位都是“<strong>秒</strong>”，<strong>wait_timeout</strong>是当一个数据库连接在timeout时间内没有任何操作的话，就会强行关闭；<strong>interactive_timeout</strong>是数据库关闭<em>交互式连接</em>前等待活动的时间，两者一般默认参数都是28800，也就是8个小时。这个参数可以根据需求适当进行调整，以方便MySQL服务器及时关闭不活跃连接，减少资源占用。</p>
+<p><strong>方法二：修改PHP调用代码</strong></p>
+<p>　　这里其实也有2条思路，一条是在连接数据库之前先<strong>查询MySQL链接的状态</strong>，使其重新链接；另一条思路是设定参数，使得每次连接MySQL服务器都创建一个新的链接，避免原来的链接超时被关闭而导致error。</p>
+<p>　　查询链接状态的方法本来应该可以方便地直接调用mysql_ping的，但是我查了下PHP的文档，发现在PHP7.0以后的版本，这货已经被移除了，于是貌似只能够自己去实现这个查询的功能了…网上摘取的部分实现代码如下所示：(<strong>NOT</strong> tested yet)</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">try</span>&#123;</div><div class="line">    $db = <span class="keyword">new</span> PDO( <span class="string">'...'</span> ); <span class="comment">// array(PDO::ATTR_PERSISTENT =&gt; FALSE) 尝试连接</span></div><div class="line"></div><div class="line">&#125;<span class="keyword">catch</span>(PDOException  $x)&#123;    <span class="comment">// 连接异常</span></div><div class="line">    <span class="keyword">echo</span> <span class="string">'Caught exception: '</span>,  $x-&gt;getMessage(), <span class="string">"\n"</span>;</div><div class="line">    <span class="keyword">try</span>&#123;</div><div class="line">        <span class="comment">// reconnect 进行重连</span></div><div class="line">        $db = <span class="keyword">new</span> PDO( <span class="string">'...'</span> );</div><div class="line">    &#125;<span class="keyword">catch</span>(PDOException  $e)&#123;    <span class="comment">// 重连失败，可能不是连接问题，而是数据库本身有问题了</span></div><div class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="keyword">Exception</span>(<span class="string">'Failed database error'</span>.$e-&gt;getMessage());</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　　对于另一条思路，看起来会实现的比较简单：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql_connect($server_name, $username, $password, <span class="keyword">TRUE</span>)</div></pre></td></tr></table></figure>
+<p>　　在mysql_connect调用中，添加最后一个参数<strong>TRUE</strong>，强制要求每次尝试连接时都新建一个链接。这种思路可能需要服务器端做好资源分配，否则大概会容易被类似DDOS攻击？所以使用这种方法的话，可能还是需要配合方法一对MySQL Server的参数进行调整，以保证服务器的运行效率。</p>
+<h2 id="MySQL请求链接被主动阻止"><a href="#MySQL请求链接被主动阻止" class="headerlink" title="MySQL请求链接被主动阻止"></a>MySQL请求链接被主动阻止</h2><h3 id="可能原因-1"><a href="#可能原因-1" class="headerlink" title="可能原因"></a>可能原因</h3><p>　　MySQL的<strong>语句过大</strong>or<strong>含有blob/longblob字段</strong>，或者是<strong>ch查询结果超过限制大小</strong>，例如图片数据的处理等情景，都容易引起MySQL server has gone away的错误。</p>
+<h3 id="参数查询-1"><a href="#参数查询-1" class="headerlink" title="参数查询"></a>参数查询</h3><p>　　这种由MySQL主动切断连接的情况可以在mysql中进行查询，看有没有发生过是由MySQL主动切断的连接。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql&gt; show global status like <span class="string">'com_kill'</span>;</div></pre></td></tr></table></figure>
+<h3 id="可能解决方案"><a href="#可能解决方案" class="headerlink" title="可能解决方案"></a>可能解决方案</h3><p>　　针对这种情景，可以首先尝试执行<em>select \</em> into $outfile*，将查询结果导出到文件中，检查下是否是MySQL的查询语句过大，或者是查询结果过大。如果超过，则需要对MySQL的<code>max_allowed_packet</code>参数进行调整，控制MySQL Server通信缓冲区的最大长度。调整方法可以直接在mysql中进行调整：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql&gt; <span class="built_in">set</span> global max_allowed_packet=1024*1024*10; <span class="comment"># 最大允许数据包大小调整为10MB</span></div></pre></td></tr></table></figure>
+<p>　　或者在<code>my.cnf/my.ini</code>配置文件中添加或者修改<code>max_allowed_packet</code>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">max_allowed_packet = 10M <span class="comment"># 也可以根据实际需求调整大小</span></div></pre></td></tr></table></figure>
+<p>　　估计我这边的问题应该是在PHP代码中，MySQL连接超时，因此打算尝试下修改PHP端的调用代码，在执行查询语句之前先查询一下MySQL的连接状态，确认连接状态之后再执行查询语句。</p>
+<p>注：以上有不少内容摘自mdxy-dxy在jb51上的文章<a href="http://www.jb51.net/article/23781.htm" target="_blank" rel="external">MySQL server has gone away 问题的解决方法</a> </p>
+
+      
+    </div>
+    
+  </div>
+  
+    
+    <div class="copyright">
+        <p><span>本文标题:</span><a href="/2016/07/22/MySQL-has-gone-away/">MySQL has gone away问题</a></p>
+        <p><span>文章作者:</span><a href="/" title="回到主页">TinyCorn X</a></p>
+        <p><span>发布时间:</span>2016-07-22, 17:46:46</p>
+        <p><span>最后更新:</span>2016-07-22, 18:13:34</p>
+        <p>
+            <span>原始链接:</span><a class="post-url" href="/2016/07/22/MySQL-has-gone-away/" title="MySQL has gone away问题">http://tinycornX.github.io/2016/07/22/MySQL-has-gone-away/</a>
+            <span class="copy-path" data-clipboard-text="原文: http://tinycornX.github.io/2016/07/22/MySQL-has-gone-away/　　作者: TinyCorn X" title="点击复制文章链接"><i class="fa fa-clipboard"></i></span>
+            <script> var clipboard = new Clipboard('.copy-path'); </script>
+        </p>
+        <p>
+            <span>许可协议:</span><i class="fa fa-creative-commons"></i> <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/" title="CC BY-NC-SA 4.0 International" target = "_blank">"署名-非商用-相同方式共享 4.0"</a> 转载请保留原文链接及作者。
+        </p>
+    </div>
+
+
+
+    <nav id="article-nav">
+        
+            <div id="article-nav-newer" class="article-nav-title">
+                <a href="/2016/07/22/sticky-tips-002/">
+                    Sticky Tips 002
+                </a>
+            </div>
+        
+        
+            <div id="article-nav-older" class="article-nav-title">
+                <a href="/2016/07/15/sticky-tips-001/">
+                    Sticky Tips 001
+                </a>
+            </div>
+        
+    </nav>
+
+  
+</article>
+
+    <div id="toc" class="toc-article">
+        <strong class="toc-title">文章目录</strong>
+        
+            <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL-Service挂了"><span class="toc-number">1.</span> <span class="toc-text">MySQL Service挂了</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#判别方法"><span class="toc-number">1.1.</span> <span class="toc-text">判别方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#可能解决思路"><span class="toc-number">1.2.</span> <span class="toc-text">可能解决思路</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL连接超时"><span class="toc-number">2.</span> <span class="toc-text">MySQL连接超时</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#可能原因"><span class="toc-number">2.1.</span> <span class="toc-text">可能原因</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#参数查询"><span class="toc-number">2.2.</span> <span class="toc-text">参数查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#可能解决方法"><span class="toc-number">2.3.</span> <span class="toc-text">可能解决方法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MySQL请求链接被主动阻止"><span class="toc-number">3.</span> <span class="toc-text">MySQL请求链接被主动阻止</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#可能原因-1"><span class="toc-number">3.1.</span> <span class="toc-text">可能原因</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#参数查询-1"><span class="toc-number">3.2.</span> <span class="toc-text">参数查询</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#可能解决方案"><span class="toc-number">3.3.</span> <span class="toc-text">可能解决方案</span></a></li></ol></li></ol>
+        
+    </div>
+    <style>
+        .left-col .switch-btn,
+        .left-col .switch-area {
+            display: none;
+        }
+        .toc-level-3 i,
+        .toc-level-3 ol {
+            display: none !important;
+        }
+    </style>
+
+    <input type="button" id="tocButton" value="隐藏目录"  title="点击按钮隐藏或者显示文章目录">
+
+    <script>
+        yiliaConfig.toc = ["隐藏目录", "显示目录", !!"false"];
+    </script>
+
+
+
+    
+<div class="share">
+    
+        <div class="bdsharebuttonbox">
+            <a href="#" class="fa fa-twitter bds_twi" data-cmd="twi" title="分享到推特"></a>
+            <a href="#" class="fa fa-weibo bds_tsina" data-cmd="tsina" title="分享到新浪微博"></a>
+            <a href="#" class="fa fa-qq bds_sqq" data-cmd="sqq" title="分享给 QQ 好友"></a>
+            <a href="#" class="fa fa-files-o bds_copy" data-cmd="copy" title="复制网址"></a>
+            <a href="#" class="fa fa fa-envelope-o bds_mail" data-cmd="mail" title="通过邮件分享"></a>
+            <a href="#" class="fa fa-weixin bds_weixin" data-cmd="weixin" title="生成文章二维码"></a>
+            <a href="#" class="fa fa-share-alt bds_more" data-cmd="more"></i></a>
+        </div>
+        <script>
+            window._bd_share_config={
+                "common":{"bdSnsKey":{},"bdText":"MySQL has gone away问题　| TinyCornの个人博客　","bdMini":"2","bdMiniList":false,"bdPic":"","bdStyle":"0","bdSize":"24"},"share":{}};with(document)0[(getElementsByTagName('head')[0]||body).appendChild(createElement('script')).src='http://bdimg.share.baidu.com/static/api/js/share.js?v=89860593.js?cdnversion='+~(-new Date()/36e5)];
+        </script>
+    
+
+    
+</div>
+
+
+
+
+
+
+
+    
+      <div class="duoshuo" id="comments">
+    <div id="comment-box" ></div>
+    <div class="ds-thread" id="ds-thread" data-thread-key="2016/07/22/MySQL-has-gone-away/" data-title="MySQL has gone away问题" data-url="http://tinycornX.github.io/2016/07/22/MySQL-has-gone-away/"></div>
+    <script>
+        var duoshuoQuery = {short_name:"tinycornX"};
+        var loadComment = function(){
+            var d = document, s = d.createElement('script');
+            //s.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+            s.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//tinycornX.github.io/js/embed.js';
+            s.async = true; s.charset = 'UTF-8';
+            (d.head || d.body).appendChild(s);
+        }
+
+        
+    </script>
+    
+    <script> loadComment(); </script>
+
+</div>
+
+    
+
+
+
+
+    <div class="scroll" id="post-nav-button">
+        
+            <a href="/2016/07/22/sticky-tips-002/" title="上一篇: Sticky Tips 002">
+                <i class="fa fa-angle-left"></i>
+            </a>
+        
+
+        <a title="文章列表"><i class="fa fa-bars"></i><i class="fa fa-times"></i></a>
+
+        
+            <a href="/2016/07/15/sticky-tips-001/" title="下一篇: Sticky Tips 001">
+                <i class="fa fa-angle-right"></i>
+            </a>
+        
+    </div>
+
+    <ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2016/08/23/sticky-tips-003/">Sticky Tips 003</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/22/sticky-tips-002/">Sticky Tips 002</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/22/MySQL-has-gone-away/">MySQL has gone away问题</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/15/sticky-tips-001/">Sticky Tips 001</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/15/Dev-Plan-on-FIDO-U2F/">FIDO U2F 学习&开发计划</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/14/XCS-Attack/">Paper Note: XCS Cross Channel Scripting Attack</a></li><li class="post-list-item"><a class="post-list-link" href="/2016/07/14/Hello-World/">Hello World!</a></li></ul>
+
+
+
+
+    <script>
+        
+    </script>
+</div>
+      <footer id="footer">
+    <div class="outer">
+        <div id="footer-info">
+            <div class="footer-left">
+                <i class="fa fa-copyright"></i> 
+                2016-2017 TinyCorn X
+            </div>
+            <div class="footer-right">
+                <a href="http://hexo.io/" target="_blank" title="快速、简洁且高效的博客框架">Hexo</a>  Theme <a href="https://github.com/MOxFIVE/hexo-theme-yelee" target="_blank" title="简而不减 Hexo 双栏博客主题  v3.5">Yelee</a> by MOxFIVE <i class="fa fa-heart animated infinite pulse"></i>
+            </div>
+        </div>
+        
+            <div class="visit">
+                
+                    <span id="busuanzi_container_site_pv" style='display:none'>
+                        <span id="site-visit" title="本站到访数"><i class="fa fa-user" aria-hidden="true"></i><span id="busuanzi_value_site_uv"></span>
+                        </span>
+                    </span>
+                
+                
+                    <span>| </span>
+                
+                
+                    <span id="busuanzi_container_page_pv" style='display:none'>
+                        <span id="page-visit"  title="本页阅读量"><i class="fa fa-eye animated infinite pulse" aria-hidden="true"></i><span id="busuanzi_value_page_pv"></span>
+                        </span>
+                    </span>
+                
+            </div>
+        
+    </div>
+</footer>
+    </div>
+    
+<script data-main="/js/main.js" src="//cdn.bootcss.com/require.js/2.2.0/require.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            var iPad = window.navigator.userAgent.indexOf('iPad');
+            if (iPad > -1 || $(".left-col").css("display") === "none") {
+                var bgColorList = ["#9db3f4", "#414141", "#e5a859", "#f5dfc6", "#c084a0", "#847e72", "#cd8390", "#996731"];
+                var bgColor = Math.ceil(Math.random() * (bgColorList.length - 1));
+                $("body").css({"background-color": bgColorList[bgColor], "background-size": "cover"});
+            }
+            else {
+                var backgroundnum = 5;
+                var backgroundimg = "url(/background/bg-x.jpg)".replace(/x/gi, Math.ceil(Math.random() * backgroundnum));
+                $("body").css({"background": backgroundimg, "background-attachment": "fixed", "background-size": "cover"});
+            }
+        })
+    </script>
+
+
+
+<!-- Google Analytics -->
+<script type="text/javascript">
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-80756943-1', 'auto');
+ga('send', 'pageview');
+
+</script>
+<!-- End Google Analytics -->
+
+
+
+<div class="scroll" id="scroll">
+    <a href="#" title="返回顶部"><i class="fa fa-arrow-up"></i></a>
+    <a href="#comments" onclick="load$hide();" title="查看评论"><i class="fa fa-comments-o"></i></a>
+    <a href="#footer" title="转到底部"><i class="fa fa-arrow-down"></i></a>
+</div>
+<script>
+    // Open in New Window
+    
+        var oOpenInNew = {
+            
+            
+            
+            
+            
+            
+             archives: ".archive-article-title", 
+             miniArchives: "a.post-list-link", 
+            
+             friends: "#js-friends a", 
+             socail: ".social a" 
+        }
+        for (var x in oOpenInNew) {
+            $(oOpenInNew[x]).attr("target", "_blank");
+        }
+    
+</script>
+
+    <script>
+        var originTitle = document.title;
+        var titleTime;
+        document.addEventListener("visibilitychange", function() {
+            if (document.hidden) {
+                document.title = "(つェ⊂) 我藏好了哦~ " + originTitle;
+                clearTimeout(titleTime);
+            }
+            else {
+                document.title = "(*´∇｀*) 被你发现啦~ " + originTitle;
+                titleTime = setTimeout(function() {
+                    document.title = originTitle;
+                }, 2000);
+            }
+        })
+    </script>
+
+<script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js">
+</script>
+  </div>
+</body>
+</html>

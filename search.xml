@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  
+  
+    
+    <entry>
+      <title><![CDATA[Sticky Tips 003]]></title>
+      <url>http://tinycornX.github.io/2016/08/23/sticky-tips-003/</url>
+      <content type="html"></content>
+    </entry>
+    
+    <entry>
+      <title><![CDATA[Sticky Tips 002]]></title>
+      <url>http://tinycornX.github.io/2016/07/22/sticky-tips-002/</url>
+      <content type="html"><![CDATA[<p>PHP PDO连接MySQL添加关闭连接，以节约服务器资源，防止因为超时而导致的服务器主动关闭链接带来的问题。</p>
+<p>问题来源于我自己遇到的<a href="https://tinycornx.github.io/2016/07/22/MySQL-has-gone-away/">MySQL has gone away</a>的错误，发现问题貌似可能是来源于PDO连接没有关闭，因此搜索了一下添加关闭连接的方法：</p>
+<p>方法很简单，这里从<a href="http://stackoverflow.com/questions/1046614/do-sql-connections-opened-with-pdo-in-php-have-to-be-closed" target="_blank" rel="external">Stackoverflow</a>摘抄了2种。首先是简单的：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">$link = <span class="keyword">new</span> PDO(<span class="string">"mysql:dbname=$dbname;host=$servername"</span>, $username, $password);</div><div class="line"></div><div class="line">$link = <span class="keyword">null</span>;</div></pre></td></tr></table></figure>
+<p>然后是复杂一点的，写一个MySQL PDO Close Connection的函数：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div></pre></td><td class="code"><pre><div class="line"><span class="comment">/*</span></div><div class="line"> * Close Mysql Connection (PDO)</div><div class="line"> */</div><div class="line"></div><div class="line">$pdo_mysql_close = <span class="function"><span class="keyword">function</span> <span class="params">(PDO $connection)</span> </span>&#123;</div><div class="line"></div><div class="line">    $query = <span class="string">'SHOW PROCESSLIST -- '</span> . uniqid(<span class="string">'pdo_mysql_close '</span>, <span class="number">1</span>);</div><div class="line">    $list  = $connection-&gt;query($query)-&gt;fetchAll(PDO::FETCH_ASSOC);</div><div class="line">    <span class="keyword">foreach</span> ($list <span class="keyword">as</span> $thread) &#123;</div><div class="line">        <span class="keyword">if</span> ($thread[<span class="string">'Info'</span>] === $query) &#123;</div><div class="line">            <span class="keyword">return</span> $connection-&gt;query(<span class="string">'KILL '</span> . $thread[<span class="string">'Id'</span>]);</div><div class="line">        &#125;</div><div class="line">    &#125;</div><div class="line">    <span class="keyword">return</span> <span class="keyword">false</span>;</div><div class="line">&#125;;</div><div class="line"></div><div class="line">$pdo_mysql_close($conn);</div></pre></td></tr></table></figure>
+]]></content>
+    </entry>
+    
+    <entry>
+      <title><![CDATA[MySQL has gone away问题]]></title>
+      <url>http://tinycornX.github.io/2016/07/22/MySQL-has-gone-away/</url>
+      <content type="html"><![CDATA[<p>　　最近做服务器的调试测试，发现隔三差五的就会莫名其妙的登录失败。查了下apache的log，发现经常出现一个“MySQL Server has gone away”的error，让我非常之蛋疼。而且貌似并发访问的时候，也会经常出现这个错误。于是就在网上搜了一下可能导致这个错误的原因，以及有可能的解决方案。 </p>
+<p>　　在mysql的运行过程中出现ERROR : (2006, ‘MySQL server has gone away’) 的问题意思就是指client和MySQL server之间的链接断开了。通常我之前的解决方案是手动重启MySQL，然而这样做太费时费力了，还得每次都重新登录下远程服务器。</p>
+<p>　　产生的原因有很多，以下大致列了以下网上列举出来的原因和查询MySQL部分参数的方法：</p>
+<h2 id="MySQL-Service挂了"><a href="#MySQL-Service挂了" class="headerlink" title="MySQL Service挂了"></a>MySQL Service挂了</h2><p>　　服务挂了，client必须就连接不上server了呗~这也是我直觉认为我这里服务器的问题。</p>
+<h3 id="判别方法"><a href="#判别方法" class="headerlink" title="判别方法"></a>判别方法</h3><p>　　判断是不是MySQL挂了的方法很简单，我简单总结了一下：</p>
+<ul>
+<li>查看后台进程列表，看看是不是有mysqld进程在运行</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ ps <span class="_">-e</span> | grep mysqld</div></pre></td></tr></table></figure>
+<ul>
+<li>查询下mysql的log，看看最近有没有重启记录(注：查看log可能需要root权限)  </li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ less /var/<span class="built_in">log</span>/mysql/error.log</div></pre></td></tr></table></figure>
+<ul>
+<li>在mysql里面查询下mysql的运行时间，如果uptime数值比较大，说明mysql服务距离上次重启已经很久了，最近没有重启操作。  </li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql&gt; show global status like <span class="string">'uptime'</span>;</div></pre></td></tr></table></figure>
+<h3 id="可能解决思路"><a href="#可能解决思路" class="headerlink" title="可能解决思路"></a>可能解决思路</h3><p>　　重启MySQL Server服务呗╮(╯∀╰)╭(注：需要<strong>root</strong>权限)</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ sudo service mysqld restart</div></pre></td></tr></table></figure>
+<p>　　服务都挂了，当然直接重启咯，重启大法好！然而引起重启的原因大概也只能够通过log的查询来进一步寻找了吧~</p>
+<h2 id="MySQL连接超时"><a href="#MySQL连接超时" class="headerlink" title="MySQL连接超时"></a>MySQL连接超时</h2><h3 id="可能原因"><a href="#可能原因" class="headerlink" title="可能原因"></a>可能原因</h3><p>　　这种情况大概是某个mysql长连接很久没有发起新的请求，于是原来的connection达到了server端设置的timeout，于是这个connection被server强行关闭了。在此之后，再通过之前的那个connection发起查询的时候，就会报错’MySQL server has gone away’了。据说大部分PHP脚本连接MySQL报错就是这个问题。</p>
+<p>　　我估计我这边服务器报错的原因也是这个，因为通过PDO连接MySQL的时候，始终没有执行close的操作。初始化原来的PDO对象进行连接之后，隔一段时间不操作，很容易就connection timeout而被server主动关闭链接了。关于PHP PDO关闭连接的简单方法可以参见我自己的<a href="https://tinycornx.github.io/2016/07/22/sticky-tips-002/">Sticky Tips</a>。</p>
+<h3 id="参数查询"><a href="#参数查询" class="headerlink" title="参数查询"></a>参数查询</h3><p>　　这里可以在mysql里面查询相关timeout的参数设置：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql&gt; show global variables like <span class="string">'%timeout'</span>;</div></pre></td></tr></table></figure>
+<p>　　理论上呢，这里应该是会显示一大堆设置过的timeout参数，例如connect_timeout、delayed_insert_timeout、innodb_lock_wait_timeout、innodb_rollback_on_timeout、<code>interactive_timeout</code>、lock_wait_timeout、net_read_timeout、net_write_timeout、slave_net_timeout、<code>wait_timeout</code>等等。当然，<em>如果没有在配置文件里面设置这些参数，他们是不会出现的</em>。</p>
+<h3 id="可能解决方法"><a href="#可能解决方法" class="headerlink" title="可能解决方法"></a>可能解决方法</h3><p><strong>方法一：修改MySQL参数</strong></p>
+<p>　　可以在<code>my.cnf</code>(windows是<code>my.ini</code>)中 修改或者增加<code>interactive_timeout</code>和<code>wait_timeout</code>的值。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"><span class="built_in">wait</span>_timeout=2880000 <span class="comment">#　默认时常应该是8*3600＝28800即8个小时，这里修改成了800小时</span></div><div class="line">interactive_timeout = 2880000 <span class="comment"># 同上</span></div></pre></td></tr></table></figure>
+<p>或者在连接数据库的时候设置<code>CLIENT_INTERACTIVE</code>，例如：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">sql = <span class="string">"set interactive_timeout=24*3600"</span>; </div><div class="line">mysql_real_query(...)</div></pre></td></tr></table></figure>
+<p>　　这里，两个参数的设置单位都是“<strong>秒</strong>”，<strong>wait_timeout</strong>是当一个数据库连接在timeout时间内没有任何操作的话，就会强行关闭；<strong>interactive_timeout</strong>是数据库关闭<em>交互式连接</em>前等待活动的时间，两者一般默认参数都是28800，也就是8个小时。这个参数可以根据需求适当进行调整，以方便MySQL服务器及时关闭不活跃连接，减少资源占用。</p>
+<p><strong>方法二：修改PHP调用代码</strong></p>
+<p>　　这里其实也有2条思路，一条是在连接数据库之前先<strong>查询MySQL链接的状态</strong>，使其重新链接；另一条思路是设定参数，使得每次连接MySQL服务器都创建一个新的链接，避免原来的链接超时被关闭而导致error。</p>
+<p>　　查询链接状态的方法本来应该可以方便地直接调用mysql_ping的，但是我查了下PHP的文档，发现在PHP7.0以后的版本，这货已经被移除了，于是貌似只能够自己去实现这个查询的功能了…网上摘取的部分实现代码如下所示：(<strong>NOT</strong> tested yet)</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">try</span>&#123;</div><div class="line">    $db = <span class="keyword">new</span> PDO( <span class="string">'...'</span> ); <span class="comment">// array(PDO::ATTR_PERSISTENT =&gt; FALSE) 尝试连接</span></div><div class="line"></div><div class="line">&#125;<span class="keyword">catch</span>(PDOException  $x)&#123;    <span class="comment">// 连接异常</span></div><div class="line">    <span class="keyword">echo</span> <span class="string">'Caught exception: '</span>,  $x-&gt;getMessage(), <span class="string">"\n"</span>;</div><div class="line">    <span class="keyword">try</span>&#123;</div><div class="line">        <span class="comment">// reconnect 进行重连</span></div><div class="line">        $db = <span class="keyword">new</span> PDO( <span class="string">'...'</span> );</div><div class="line">    &#125;<span class="keyword">catch</span>(PDOException  $e)&#123;    <span class="comment">// 重连失败，可能不是连接问题，而是数据库本身有问题了</span></div><div class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="keyword">Exception</span>(<span class="string">'Failed database error'</span>.$e-&gt;getMessage());</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>　　对于另一条思路，看起来会实现的比较简单：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql_connect($server_name, $username, $password, <span class="keyword">TRUE</span>)</div></pre></td></tr></table></figure>
+<p>　　在mysql_connect调用中，添加最后一个参数<strong>TRUE</strong>，强制要求每次尝试连接时都新建一个链接。这种思路可能需要服务器端做好资源分配，否则大概会容易被类似DDOS攻击？所以使用这种方法的话，可能还是需要配合方法一对MySQL Server的参数进行调整，以保证服务器的运行效率。</p>
+<h2 id="MySQL请求链接被主动阻止"><a href="#MySQL请求链接被主动阻止" class="headerlink" title="MySQL请求链接被主动阻止"></a>MySQL请求链接被主动阻止</h2><h3 id="可能原因-1"><a href="#可能原因-1" class="headerlink" title="可能原因"></a>可能原因</h3><p>　　MySQL的<strong>语句过大</strong>or<strong>含有blob/longblob字段</strong>，或者是<strong>ch查询结果超过限制大小</strong>，例如图片数据的处理等情景，都容易引起MySQL server has gone away的错误。</p>
+<h3 id="参数查询-1"><a href="#参数查询-1" class="headerlink" title="参数查询"></a>参数查询</h3><p>　　这种由MySQL主动切断连接的情况可以在mysql中进行查询，看有没有发生过是由MySQL主动切断的连接。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql&gt; show global status like <span class="string">'com_kill'</span>;</div></pre></td></tr></table></figure>
+<h3 id="可能解决方案"><a href="#可能解决方案" class="headerlink" title="可能解决方案"></a>可能解决方案</h3><p>　　针对这种情景，可以首先尝试执行<em>select \</em> into $outfile*，将查询结果导出到文件中，检查下是否是MySQL的查询语句过大，或者是查询结果过大。如果超过，则需要对MySQL的<code>max_allowed_packet</code>参数进行调整，控制MySQL Server通信缓冲区的最大长度。调整方法可以直接在mysql中进行调整：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">mysql&gt; <span class="built_in">set</span> global max_allowed_packet=1024*1024*10; <span class="comment"># 最大允许数据包大小调整为10MB</span></div></pre></td></tr></table></figure>
+<p>　　或者在<code>my.cnf/my.ini</code>配置文件中添加或者修改<code>max_allowed_packet</code>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">max_allowed_packet = 10M <span class="comment"># 也可以根据实际需求调整大小</span></div></pre></td></tr></table></figure>
+<p>　　估计我这边的问题应该是在PHP代码中，MySQL连接超时，因此打算尝试下修改PHP端的调用代码，在执行查询语句之前先查询一下MySQL的连接状态，确认连接状态之后再执行查询语句。</p>
+<p>注：以上有不少内容摘自mdxy-dxy在jb51上的文章<a href="http://www.jb51.net/article/23781.htm" target="_blank" rel="external">MySQL server has gone away 问题的解决方法</a> </p>
+]]></content>
+    </entry>
+    
+    <entry>
+      <title><![CDATA[Sticky Tips 001]]></title>
+      <url>http://tinycornX.github.io/2016/07/15/sticky-tips-001/</url>
+      <content type="html"><![CDATA[<h2 id="Markdown-中文段首空格"><a href="#Markdown-中文段首空格" class="headerlink" title="Markdown 中文段首空格　"></a>Markdown 中文段首空格　</h2><p>Markdown写Blog的时候各种中英文混杂，英文段落是符合Markdown基本处理原则的，段首没有空格，但是中文的段落总是觉得段首顶格不好看，于是搜了搜怎样做中文段首空格最好~</p>
+<blockquote>
+<p>中文输入法切换到<code>全角</code>直接空格2次即可，每个全角空格正好相当于缩进了1个文字。</p>
+</blockquote>
+<h2 id="Yelee主题文章显示宽度调整"><a href="#Yelee主题文章显示宽度调整" class="headerlink" title="Yelee主题文章显示宽度调整"></a>Yelee主题文章显示宽度调整</h2><p>平时比较懒，写的blog不但数量少，内容也都是比较可怜的，于是博客主页打开了之后发现，文章显示宽度肿么辣麽长啊喂，我一共都没有几个字呢，这么看起来就显得内容更少了！于是对比了一下Yelee主题作者MOxFIVE提供的<a href="http://moxfive.xyz/" target="_blank" rel="external">样本站</a> ，发现他是限定了文章显示的宽度，因此显得内容更加饱满一点(虽然其实是人家博客的干货更多)。所以我也比较了一下，大概找到了修改的方法~</p>
+<blockquote>
+<p>定位到Yelee的主题文件夹中，找到<strong>article.styl</strong>，在<strong>body-wrap</strong>中添加<code>max-width</code>的限定以及<code>margin</code>的选项即可。Max-width选项可以根据具体显示需求进行调整~</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">$ <span class="built_in">cd</span> <span class="variable">$YELEE_THEME_DIR</span>/<span class="built_in">source</span>/css/_partial/</div><div class="line">$ vim article.styl</div></pre></td></tr></table></figure>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line"><span class="selector-class">.body-wrap</span>&#123;</div><div class="line">  <span class="attribute">margin-bottom</span>: <span class="number">126px</span>;</div><div class="line">  <span class="attribute">overflow</span>: hidden;</div><div class="line">  <span class="attribute">max-width</span>: <span class="number">75em</span>;</div><div class="line">  <span class="comment">/*margin: auto; 会导致下方的访问统计与文章内容Overlay*/</span></div><div class="line">  <span class="attribute">margin-left</span>: auto; </div><div class="line">  <span class="attribute">margin-right</span>: auto;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+]]></content>
+    </entry>
+    
+    <entry>
+      <title><![CDATA[FIDO U2F 学习&开发计划]]></title>
+      <url>http://tinycornX.github.io/2016/07/15/Dev-Plan-on-FIDO-U2F/</url>
+      <content type="html"><![CDATA[<p>　　计划最近半年到1年时间里面，进行FIDO U2F相关的学习与开发，着重于密码学部分的代码实现以及服务器端的搭建，Token部分的话感觉用户体验暂时还是比较欠缺，还是先看看FIDO Alliance有没有进一步的动作和规划再观望吧~</p>
+<h2 id="U2F-Server-Development"><a href="#U2F-Server-Development" class="headerlink" title="U2F Server Development"></a>U2F Server Development</h2><ul>
+<li><strong>Imporvement</strong> on Current version</li>
+<li><strong>Documentation</strong> on current implementation</li>
+<li><strong>Re-implement </strong>a new version either in <strong>C</strong> or <strong>Python</strong><ul>
+<li>Cryptography part (SHA256, AES128-CBC, ECDSA Verify, HTTPS Certificate Validation, Attestation Certificate Validation &amp; Management)</li>
+<li>SQL part (High Efficiency interaction, Secure Storage etc..)</li>
+<li>Logic Part (Interaction with frontend, Restful API, Load balancing-Optional) </li>
+</ul>
+</li>
+</ul>
+<h2 id="U2F-Token-Development"><a href="#U2F-Token-Development" class="headerlink" title="U2F Token Development"></a>U2F Token Development</h2><ul>
+<li>Documentation on <em>current</em> version</li>
+<li>USB token development on a <em>new secure chip</em> (Optional)</li>
+<li>BLE Implementation, BLE芯片仅仅作为透传接口，而不承担密码学计算工作 (需要等待下一代BLE标准以及FIDO Alliance对协议的改进)</li>
+</ul>
+<p>　　暂时就是这些吧~重点应该是放在<strong>密码学算法的实现、优化，以及服务器的架设</strong>上~加油(๑•̀ㅂ•́)و✧</p>
+]]></content>
+    </entry>
+    
+    <entry>
+      <title><![CDATA[Paper Note: XCS Cross Channel Scripting Attack]]></title>
+      <url>http://tinycornX.github.io/2016/07/14/XCS-Attack/</url>
+      <content type="html"><![CDATA[<blockquote>
+<p>Paper：<a href="http://seclab.stanford.edu/websec/embedded/embedded-ccs09-paper.pdf" target="_blank" rel="external">XCS: Cross Channel Scripting and its Impact on Web Applications</a></p>
+</blockquote>
+<p><strong>XCS</strong>概念：<em>Cross Channel Scripting</em> attack is an attack where a <strong>non-web channel</strong> (e.g. FTP, NAS/SMB, P2P, SNMP etc..) is used to inject a script into web content running in a different security context.</p>
+<p>基本思路：将要执行的脚本以文件名扩展、额外文件（p2p）、恶意文件等形式上传或者放置在攻击者网站上，引诱被攻击者对文件列表等含有脚本的文件进行读取或者下载，让目标在不知情的情况下在浏览器中运行恶意脚本，从而获取目标Admin权限或者添加Admin账户，达到攻击的目的。</p>
+<p><img src="./xcs_overview.PNG" alt="XCS overview"></p>
+<h3 id="2-stage-XCS-exploit"><a href="#2-stage-XCS-exploit" class="headerlink" title="2-stage XCS exploit"></a>2-stage XCS exploit</h3><p>Step 1: Payload/Script Injection  ==&gt; Infection<br>Step 2: Victim Run/Download affected file(s) ==&gt; Execution</p>
+<p>Example: NAS admin list files, where file name contains injected code/script.</p>
+<h3 id="XCS-from-P2P-channel"><a href="#XCS-from-P2P-channel" class="headerlink" title="XCS from P2P channel"></a>XCS from P2P channel</h3><p>攻击者将恶意文件与正常文件打包在同一个种子文件里。被攻击者通过P2P下载正常文件的同时就会将恶意文件同时下载到设备上。</p>
+<p><img src="./xcs_p2p.PNG" alt="XCS P2P">  </p>
+<h3 id="Log-based-XCS"><a href="#Log-based-XCS" class="headerlink" title="Log-based XCS"></a>Log-based XCS</h3><p>攻击者在登录或者访问其他服务的时候，将恶意脚本代码放在文件名等其他的数据中，在服务器后台记录失败Log的时候，就将同时把这段恶意代码记录在Log中。这样，在Admin在页面上访问Log的时候，恶意代码就将在Admin的浏览器中执行。（感觉这种方式跟SQL注入的原理是一样的）</p>
+<p>e.g. 这种攻击方法可以用于攻击LOM(Lights-out Management System)</p>
+<h3 id="Reverse-XCS"><a href="#Reverse-XCS" class="headerlink" title="Reverse XCS"></a>Reverse XCS</h3><p>Reverse XCS是利用web interface来攻击non-web channel。</p>
+<p>跟2-stage XCS类似，Reverse XCS也是可以通过Infection与Execution两个步骤进行攻击，不过Execution过程会更加复杂，因为Reverse XCS是在恶意代码执行之后，进行端口扫描等操作，并且通过non-web channel将靶机的private文件上传给攻击者。</p>
+<p><img src="./xcs_rxcs.PNG" alt="XCS RXCS"> </p>
+<h3 id="Defense-SiteFirewall"><a href="#Defense-SiteFirewall" class="headerlink" title="Defense: SiteFirewall"></a>Defense: SiteFirewall</h3><p><img src="./xcs_sitefirewall.PNG" alt="XCS SiteFireWall"> </p>
+]]></content>
+    </entry>
+    
+    <entry>
+      <title><![CDATA[Hello World!]]></title>
+      <url>http://tinycornX.github.io/2016/07/14/Hello-World/</url>
+      <content type="html"><![CDATA[<p>终于终于，在经过了无数次的挣扎、推倒、重建之后，我终于再次下定决心建立一个自己的博客网站了~</p>
+<p>当然，从方案的选择，到最终的实行，其实已经轻车熟路了，毕竟之前已经经历和尝试了号多次了囧~在建立的过程中，主要参考了diygreen的教程<a href="http://www.jianshu.com/p/380290deb8f0" target="_blank" rel="external">免费个人博客搭建详解</a>，以及本博客的装饰主题作者<a href="http://moxfive.xyz/" target="_blank" rel="external">MOxFIVE</a>的介绍文档，搭载环境当然还是所谓的Geek风的Github+Hexo了~</p>
+<p>好啦，废话就懒得再打了，希望我能够有足够的耐心慢慢维护这个博客吧~！</p>
+]]></content>
+    </entry>
+    
+  
+  
+</search>
