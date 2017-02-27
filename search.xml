@@ -4,6 +4,20 @@
   
     
     <entry>
+      <title><![CDATA[Sticky Tips 003]]></title>
+      <url>http://tinycornX.github.io/2017/02/27/sticky-tips-003/</url>
+      <content type="html"><![CDATA[<p>　　在Windows下我们常常可以直接使用<code>Adobe Arcobat Pro</code>来进行PDF文件的裁剪、拼接等操作，同样在Mac下自带的<code>Preview</code>也能很方便进行基本的PDF编辑和拼接操作。但是，在Linux下似乎很难做到，因为一般Ubuntu系的发行版自带的Evince只能进行阅读，而无法编辑和拼接PDF，此时只能借助其他的工具来进行PDF的裁剪和拼接了。</p>
+<p>　　我Google了一下解决方案，找到了<a href="http://seisman.info/merge-multiple-pdfs.html" target="_blank" rel="external">SeisMan的解决方案</a>，并且选取了其中使用<code>pdftk</code>的工具进行PDF的合并。</p>
+<h3 id="pdftk工具安装"><a href="#pdftk工具安装" class="headerlink" title="pdftk工具安装"></a>pdftk工具安装</h3><p>　　pdftk的安装还是挺方便的，是直接能够在Ubuntu的软件仓库里面找到：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ sudo apt-get install pdftk</div></pre></td></tr></table></figure></p>
+<h3 id="pdftk工具使用"><a href="#pdftk工具使用" class="headerlink" title="pdftk工具使用"></a>pdftk工具使用</h3><p>　　我的目标是将2份PDF文件进行合并，所以我所使用的指令是：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">$ pdftk input_file_1.pdf input_file_2.pdf cat output output_file.pdf</div></pre></td></tr></table></figure></p>
+<p>　　其实pdftk工具还有很多的功能，可以对PDF进行编辑、截取等。详细的操作可以通过命令行进行查看：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">pdftk --help</div></pre></td></tr></table></figure></p>
+<blockquote>
+<p>注：这里我使用的Linux发行版为基于Ubuntu的<strong>Linux Mint 17.3 64-bit</strong></p>
+</blockquote>
+]]></content>
+    </entry>
+    
+    <entry>
       <title><![CDATA[Sticky Tips 002]]></title>
       <url>http://tinycornX.github.io/2016/07/22/sticky-tips-002/</url>
       <content type="html"><![CDATA[<p>PHP PDO连接MySQL添加关闭连接，以节约服务器资源，防止因为超时而导致的服务器主动关闭链接带来的问题。</p>
